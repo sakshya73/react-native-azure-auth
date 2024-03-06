@@ -1,4 +1,5 @@
 #import "AzureAuth.h"
+#import "MyWebViewController.h"
 
 #import <SafariServices/SafariServices.h>
 #if __has_include("AuthenticationServices/AuthenticationServices.h")
@@ -43,15 +44,18 @@ RCT_EXPORT_METHOD(showUrl:(NSString *)urlString
                   usingEphemeralSession:(BOOL)ephemeralSession
                   closeOnLoad:(BOOL)closeOnLoad
                   callback:(RCTResponseSenderBlock)callback) {
-    if (@available(iOS 11.0, *)) {
-        self.sessionCallback = callback;
-        self.closeOnLoad = closeOnLoad;
-        [self presentAuthenticationSession:[NSURL URLWithString:urlString] usingEphemeralSession:ephemeralSession];
-    } else {
-        [self presentSafariWithURL:[NSURL URLWithString:urlString]];
-        self.sessionCallback = callback;
-        self.closeOnLoad = closeOnLoad;
-    }    
+     MyWebViewController *webViewController = [[MyWebViewController alloc] init];
+      webViewController.urlString = urlString;
+      webViewController.completionHandler = ^(BOOL success, NSString *redirectUrl) {
+          if (success) {
+              [webViewController dismissViewControllerAnimated:YES completion:nil];
+              callback(@[[NSNull null], redirectUrl]);
+          } else {
+              callback(@[RCTMakeError(@"Error occurred during authentication", nil, nil), [NSNull null]]);
+          }
+      };
+      UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+      [rootViewController presentViewController:webViewController animated:YES completion:nil];
 }
 
 RCT_EXPORT_METHOD(oauthParameters:(RCTResponseSenderBlock)callback) {
