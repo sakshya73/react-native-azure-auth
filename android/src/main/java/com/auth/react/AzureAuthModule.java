@@ -7,11 +7,15 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Handler;
 import androidx.annotation.NonNull;
-import androidx.browser.customtabs.CustomTabsIntent;
 import android.util.Base64;
 import android.content.ActivityNotFoundException;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.util.Log;
 
+import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.BaseActivityEventListener;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.LifecycleEventListener;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -30,11 +34,28 @@ public class AzureAuthModule extends ReactContextBaseJavaModule implements Lifec
     private final ReactApplicationContext reactContext;
     private Callback callback;
     private boolean closeOnLoad;
+    private int LAUNCH_SECOND_ACTIVITY = 1;
+
+  private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
+    @Override
+    public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent data) {
+      Log.d("WebView", "onActivityResult: " + data);
+      Log.d("WebView", "requestCode: " + requestCode);
+      Log.d("WebView", "resultCode: " + resultCode);
+      if (resultCode == Activity.RESULT_OK) {
+        String redirectUrl = data.getStringExtra("result");
+        Log.d("WebView", "onActivityResult: " + redirectUrl);
+        callback.invoke(false, redirectUrl);
+        callback = null;
+      }
+    }
+  };
 
     public AzureAuthModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
         this.reactContext.addLifecycleEventListener(this);
+        this.reactContext.addActivityEventListener(mActivityEventListener);
     }
 
     @Override
@@ -49,22 +70,19 @@ public class AzureAuthModule extends ReactContextBaseJavaModule implements Lifec
         return constants;
     }
 
-    @ReactMethod
-    public void showUrl(String url, boolean closeOnLoad, Callback callback) {
+
+  @ReactMethod
+    public void showUrl(final String url, final boolean closeOnLoad, final Callback callback) {
         final Activity activity = getCurrentActivity();
 
         this.callback = callback;
         this.closeOnLoad = closeOnLoad;
 
         if (activity != null) {
-            try {
-                CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
-                CustomTabsIntent customTabsIntent = builder.build();
-                customTabsIntent.launchUrl(activity, Uri.parse(url));
-            } catch (ActivityNotFoundException e) {
-                // No chrome installed on device
-                startNewBrowserActivity(url);
-            }
+            int LAUNCH_SECOND_ACTIVITY = 1;
+            Intent intent = new Intent(activity, MyWebViewActivity.class);
+            intent.putExtra("url", url);
+            activity.startActivityForResult(intent, LAUNCH_SECOND_ACTIVITY);
         } else {
             startNewBrowserActivity(url);
         }
@@ -85,7 +103,7 @@ public class AzureAuthModule extends ReactContextBaseJavaModule implements Lifec
         parameters.putString("verifier", this.generateRandomValue());
         callback.invoke(parameters);
     }
-   
+
     @ReactMethod
     public void hide() {
         AzureAuthModule.this.callback = null;
