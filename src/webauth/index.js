@@ -16,7 +16,6 @@ import { validate } from '../utils/validate'
  * @see https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-protocols-oauth-code
  */
 export default class WebAuth {
-
     constructor(auth) {
         this.client = auth
         const { clientId } = auth
@@ -25,33 +24,36 @@ export default class WebAuth {
     }
 
     /**
-   * Starts the AuthN/AuthZ transaction against the AS in the in-app browser.
-   *
-   * In iOS it will use `SFSafariViewController` and in Android `Chrome Custom Tabs`.
-   *
-   * @param {Object} options parameters to send
-   * @param {String} [options.scope] scopes requested for the issued tokens.
-   *    OpenID Connect scopes are always added to every request. `openid profile offline_access`
-   *    @see https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-scopes
-   * @param {String} [options.prompt] (optional) indicates the type of user interaction that is required.
-   *    The only valid values are 'login', 'none', 'consent', and 'select_account'.
-   *    @see https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
-   * @param {Boolean} [options.ephemeralSession] SSO. It only affects iOS with versions 13 and above.
-   * @returns {Promise<BaseTokenItem | AccessTokenItem>}
-   *
-   * @memberof WebAuth
-   */
+     * Starts the AuthN/AuthZ transaction against the AS in the in-app browser.
+     *
+     * In iOS it will use `SFSafariViewController` and in Android `Chrome Custom Tabs`.
+     *
+     * @param {Object} options parameters to send
+     * @param {String} [options.scope] scopes requested for the issued tokens.
+     *    OpenID Connect scopes are always added to every request. `openid profile offline_access`
+     *    @see https://docs.microsoft.com/en-us/azure/active-directory/develop/active-directory-v2-scopes
+     * @param {String} [options.prompt] (optional) indicates the type of user interaction that is required.
+     *    The only valid values are 'login', 'none', 'consent', and 'select_account'.
+     *    @see https://learn.microsoft.com/en-us/azure/active-directory/develop/v2-oauth2-auth-code-flow
+     * @param {Boolean} [options.ephemeralSession] SSO. It only affects iOS with versions 13 and above.
+     * @param {String} options.authorityUrl (optional)the authorityUrl for signup or other flows directly
+     * @returns {Promise<BaseTokenItem | AccessTokenItem>}
+     *
+     * @memberof WebAuth
+     */
     async authorize(options = {}) {
         const scope = new Scope(options.scope)
 
         const { clientId, client, agent } = this
-        const {nonce, state, verifier} = await agent.generateRequestParams()
+        const { nonce, state, verifier } = await agent.generateRequestParams()
 
         let requestParams = {
             ...options,
             clientId,
             scope: scope.toString(),
-            responseType: 'code' + (scope.toString().includes('openid') ? ' id_token': ''),
+            responseType:
+                'code' +
+                (scope.toString().includes('openid') ? ' id_token' : ''),
             response_mode: 'fragment', // 'query' is unsafe and not supported, the hash fragment is also default
             state: state,
             nonce: nonce,
@@ -60,8 +62,11 @@ export default class WebAuth {
         }
         const loginUrl = this.client.loginUrl(requestParams)
 
-        let redirectUrl = await agent.openWeb(loginUrl, options.ephemeralSession)
-
+        let redirectUrl = await agent.openWeb(
+            loginUrl,
+            options.ephemeralSession
+        )
+        console.log('redirectUrl>>>>>>>', redirectUrl)
         if (!redirectUrl || !redirectUrl.startsWith(client.redirectUri)) {
             throw new AuthError({
                 json: {
@@ -74,16 +79,12 @@ export default class WebAuth {
 
         // Response is returned in hash, but we want to get parsed object
         // Query can be parsed, therefore lets replace hash sign with '?' mark
-        redirectUrl = redirectUrl.replace('#','?') // replace only first one
+        redirectUrl = redirectUrl.replace('#', '?') // replace only first one
         const urlHashParsed = url.parse(redirectUrl, true).query
-        const {
-            code,
-            state: resultState,
-            error
-        } = urlHashParsed
+        const { code, state: resultState, error } = urlHashParsed
 
         if (error) {
-            throw new AuthError({json: urlHashParsed, status: 0})
+            throw new AuthError({ json: urlHashParsed, status: 0 })
         }
 
         if (resultState !== state) {
@@ -98,14 +99,17 @@ export default class WebAuth {
         const tokenResponse = await client.exchange({
             code,
             scope: scope.toString(),
-            code_verifier: verifier
+            code_verifier: verifier,
+            authorityUrl: options?.authorityUrl
         })
 
         if (tokenResponse.refreshToken) {
             this.client.cache.saveRefreshToken(tokenResponse)
         }
         if (tokenResponse.accessToken) {
-            let accessToken = await this.client.cache.saveAccessToken(tokenResponse)
+            let accessToken = await this.client.cache.saveAccessToken(
+                tokenResponse
+            )
             return accessToken
         } else {
             // we have to have at least id_token in respose
@@ -113,24 +117,26 @@ export default class WebAuth {
         }
     }
 
-    
     /**
-   *  Removes Azure session
-   *
-   * @param {Object} options parameters to send
-   * @param {Boolean} [options.closeOnLoad] close browser window on 'Loaded' event (works only on iOS)
-   * @returns {Promise}
-   *
-   * @memberof WebAuth
-   */
-    clearSession(options = {closeOnLoad: true}) {
+     *  Removes Azure session
+     *
+     * @param {Object} options parameters to send
+     * @param {Boolean} [options.closeOnLoad] close browser window on 'Loaded' event (works only on iOS)
+     * @returns {Promise}
+     *
+     * @memberof WebAuth
+     */
+    clearSession(options = { closeOnLoad: true }) {
         const { client, agent } = this
-        const parsedOptions = validate({
-            parameters: {
-                closeOnLoad: { required: true },
+        const parsedOptions = validate(
+            {
+                parameters: {
+                    closeOnLoad: { required: true }
+                },
+                validate: true // not declared params are NOT allowed:
             },
-            validate: true // not declared params are NOT allowed:
-        }, options)
+            options
+        )
 
         const logoutUrl = client.logoutUrl()
         return agent.openWeb(logoutUrl, false, parsedOptions.closeOnLoad)
