@@ -10,7 +10,9 @@ typedef void (^CompletionHandler)(BOOL success, NSString * _Nullable callbackURL
 
 @property (nonatomic, strong) WKWebView *webView;
 @property (nonatomic, copy) NSString *urlString;
+@property (nonatomic, copy) NSString *redirectUri;
 @property (nonatomic, copy) CompletionHandler completionHandler;
+@property (nonatomic, strong) UIActivityIndicatorView *activityIndicator;
 
 @end
 

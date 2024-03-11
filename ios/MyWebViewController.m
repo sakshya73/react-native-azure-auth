@@ -20,6 +20,11 @@
     self.webView = [[WKWebView alloc] initWithFrame:self.view.bounds];
     self.webView.navigationDelegate = self;
     [self.view addSubview:self.webView];
+       self.activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+       self.activityIndicator.center = self.view.center;
+       self.activityIndicator.transform = CGAffineTransformMakeScale(2.0, 2.0);
+       self.activityIndicator.hidesWhenStopped = YES;
+       [self.view addSubview:self.activityIndicator];
     [self loadUrl];
 }
 
@@ -32,7 +37,12 @@
 }
 
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    [self.activityIndicator stopAnimating];
     // Handle page loaded event
+}
+
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation {
+    [self.activityIndicator startAnimating];
 }
 
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
@@ -41,9 +51,7 @@
 
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSURL *url = navigationAction.request.URL;
-    NSString *prefix = @""; // Check if the URL matches the redirect URL //Change the url based on your
-                                        // requirement
-    if ([url.absoluteString hasPrefix: prefix]) {
+    if ([url.absoluteString hasPrefix:self.redirectUri] || [url.absoluteString hasSuffix:@"/home"]) {
         if (self.completionHandler) {
             self.completionHandler(YES, url.absoluteString);
         }

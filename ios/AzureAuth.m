@@ -41,11 +41,14 @@ RCT_EXPORT_METHOD(hide) {
 }
 
 RCT_EXPORT_METHOD(showUrl:(NSString *)urlString
+                  redirect_uri: (NSString *)redirectUri
                   usingEphemeralSession:(BOOL)ephemeralSession
                   closeOnLoad:(BOOL)closeOnLoad
                   callback:(RCTResponseSenderBlock)callback) {
-     MyWebViewController *webViewController = [[MyWebViewController alloc] init];
+    NSLog(@"redirectUri in showUrl: %@", redirectUri);
+    MyWebViewController *webViewController = [[MyWebViewController alloc] init];
       webViewController.urlString = urlString;
+      webViewController.redirectUri = redirectUri;
       webViewController.completionHandler = ^(BOOL success, NSString *redirectUrl) {
           if (success) {
               [webViewController dismissViewControllerAnimated:YES completion:nil];
