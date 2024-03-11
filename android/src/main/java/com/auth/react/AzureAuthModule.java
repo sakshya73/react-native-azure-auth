@@ -72,7 +72,7 @@ public class AzureAuthModule extends ReactContextBaseJavaModule implements Lifec
 
 
   @ReactMethod
-    public void showUrl(final String url, final boolean closeOnLoad, final Callback callback) {
+    public void showUrl(final String url,final String redirectUri, final boolean closeOnLoad, final Callback callback) {
         final Activity activity = getCurrentActivity();
 
         this.callback = callback;
@@ -82,6 +82,7 @@ public class AzureAuthModule extends ReactContextBaseJavaModule implements Lifec
             int LAUNCH_SECOND_ACTIVITY = 1;
             Intent intent = new Intent(activity, MyWebViewActivity.class);
             intent.putExtra("url", url);
+            intent.putExtra("redirectUri", redirectUri);
             activity.startActivityForResult(intent, LAUNCH_SECOND_ACTIVITY);
         } else {
             startNewBrowserActivity(url);
